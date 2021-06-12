@@ -1,7 +1,7 @@
 <template>
   <div id="app">
     <img alt="Vue logo" src="./assets/logo.png">
-    <BinaryOptions msg="Gluon V2 Binary Options"/>
+    <BinaryOptions msg="Binary Options"/>
   </div>
 </template>
 
