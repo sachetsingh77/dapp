@@ -84,7 +84,7 @@ export default {
       }*/
     },
     async predict(bytes32OptionId){
-      console.log(betValue + " for " + bytes32OptionId)
+      console.log(bytes32OptionId)
       /*const client = new EthersClient()
       await client.init()
       await client.predict(bytes32OptionId)*/
