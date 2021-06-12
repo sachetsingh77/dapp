@@ -1,17 +1,17 @@
 <template>
   <div id="app">
     <img alt="Vue logo" src="./assets/logo.png">
-    <HelloWorld msg="Welcome to Your Decentralized Vue.js App"/>
+    <BinaryOptions msg="Gluon V2 Binary Options"/>
   </div>
 </template>
 
 <script>
-import HelloWorld from './components/HelloWorld.vue'
+import BinaryOptions from './components/BinaryOptions.vue'
 
 export default {
   name: 'App',
   components: {
-    HelloWorld
+    BinaryOptions
   }
 }
 </script>
