@@ -1,6 +1,6 @@
 pragma solidity ^0.4.15;
 
-contract GluonBinaryOptions {
+contract BinaryOptions {
 
     address public owner;
 
@@ -26,6 +26,20 @@ contract GluonBinaryOptions {
     mapping(uint => Option) public optionsArray;
     uint public optionsCount;
     mapping(bytes32 => Option) public Options;
+    
+    uint public commission;
+    uint public minAmount = 1000000;
+    uint public maxAmount = 1000000000;
+    
+    function setCommission(uint commissionInput) isOwner() public{
+        commission = commissionInput;
+    }
+    function setMinAmount(uint min) isOwner() public{
+        minAmount = min;
+    }
+    function setMaxAmount(uint max) isOwner() public{
+        maxAmount = max;
+    }
 
     mapping(address => mapping(bytes32 => Bet)) public Bets;
 
@@ -106,9 +120,8 @@ contract GluonBinaryOptions {
         public 
         returns(bool success) {
             
-        Option storage option = Options[identifier];
         require(option.expiryBlock < block.number);
-        
+        Option storage option = Options[identifier];
         option.resolved = true;
         
         return true;
@@ -119,8 +132,8 @@ contract GluonBinaryOptions {
         public
         returns(bool success) {
             
-        Option storage option = Options[identifier];
         require(option.expiryBlock < block.number);
+        Option storage option = Options[identifier];
         require(option.resolved);
         require(result == Result.Yes || result == Result.No || result == Result.Undecided);
         option.result = result;

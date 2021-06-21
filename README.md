@@ -1,4 +1,4 @@
-# decentralised-vue
+# dapp-vue
 
 ## Project setup
 ```

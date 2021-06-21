@@ -1,5 +1,6 @@
 const ethers = require('ethers')
-const address  = '0x4f69d68bF964ae7dCA560553b2a744CbdB267D3D';
+//const address = '0x6B804868C2E116688022336815ABe22BcD651992' //ropsten
+const address = '0x8D9A4266c4d02E1aB80d42e545e89B49A3A8e264'
 let Option, provider
 class EthersClient{
   constructor(){
@@ -7,9 +8,9 @@ class EthersClient{
   }
   async getOption(optionIdx){
     Option = await this.contract.optionsArray(optionIdx)
-    console.log("Option " + optionIdx)
-    console.log(Option)
-    return {identifier: Option.identifier, optionCode: Option.optionCode, description: Option.description, resolved: Option.resolved, expiryBlock: Option.expiryBlock}
+    const yesBalance = await this.contract.getResultBalance(Option.identifier, '1')
+    const noBalance = await this.contract.getResultBalance(Option.identifier, '2')
+    return {yesBalance, noBalance, newBetValue: '', newBetYesNo: '', identifierShort: Option.identifier.substring(0,8)+"...", identifier: Option.identifier, optionCode: Option.optionCode, description: Option.description, resolved: Option.resolved, expiryBlock: Option.expiryBlock}
   }
   async getBalance(optionId, yesNo){
     return await this.contract.getResultBalance(optionId, yesNo)
@@ -27,19 +28,28 @@ class EthersClient{
   async getOptionsCount(){
     return await this.contract.optionsCount()
   }
-  async predict(optionId){
-    console.log(optionId)
+  async resolveOption(optionId){
     const withSigner = this.contract.connect(provider.getSigner())
-    let payable = {value: 2000, gasLimit: 1000000, gasPrice: 100000000000}
-    return await withSigner.predict("BTC-35000", "2", payable).catch(e => console.log(e))
+    await withSigner.resolveOption(optionId).catch(e => console.log(e))
   }
-  async addCryptoBinaryOption(token, price){
-    await this.addBinaryOption(token + "-" + price, token + " will be more than " + price + " on Expiry", 100000);
+  async setOptionResult(optionId, outcome){
+    const withSigner = this.contract.connect(provider.getSigner())
+    await withSigner.setOptionResult(optionId, outcome).catch(e => console.log(e))
+  }
+  async receivePayment(optionId){
+    const withSigner = this.contract.connect(provider.getSigner())
+    await withSigner.receivePayment(optionId).catch(e => console.log(e))
+  }
+  async placeBet(optionId, betValue, yesNo){
+    const withSigner = this.contract.connect(provider.getSigner())
+    let payable = {value: betValue*1, gasLimit: 1000000, gasPrice: 100000000000}
+    return await withSigner.placeBet(optionId, yesNo+'', payable).catch(e => console.log(e))
+  }
+  async addCryptoBinaryOption(token, price, expiryBlock){
+    await this.addBinaryOption(token + "-" + price, token + " will be more than " + price + " on Expiry", expiryBlock);
   }
   async addBinaryOption(optionCode, optionDescription, optionExpiryInBlocks){
     const withSigner = this.contract.connect(provider.getSigner())
-    console.log("withSigner")
-    console.log(withSigner)
     await withSigner.addBinaryOption(optionCode, optionDescription, optionExpiryInBlocks).catch(e => console.log(e))
   }
   async init(){
