@@ -24,6 +24,9 @@
                   <v-col>
                     <v-btn @click="openPosition()" color="primary">Open Position</v-btn>
                   </v-col>
+                  <v-col>
+                    <v-btn @click="closePosition()" color="primary">Close Position</v-btn>
+                  </v-col>
                 </v-row>
               </v-expansion-panel-content>
             </v-expansion-panel>
@@ -97,8 +100,12 @@ export default {
           this.kvTable.push({Key: 'Pair Address', Val: this.pairAddress}) 
           this.kvTable.push({Key: 'Token A', Val: await this.contract.tokensForPair(this.pairAddress, 0)}) 
           this.kvTable.push({Key: 'Token B', Val: await this.contract.tokensForPair(this.pairAddress, 1)}) 
-          this.kvTable.push({Key: 'Contracts', Val: await this.contract.vAmmPoolByPair(this.pairAddress, 0)}) 
-          this.kvTable.push({Key: 'Quote Ccy Amt', Val: await this.contract.vAmmPoolByPair(this.pairAddress, 1)}) 
+          const contractsAmt = await this.contract.vAmmPoolByPair(this.pairAddress, 0);
+          const quoteCcyAmt = await this.contract.vAmmPoolByPair(this.pairAddress, 1);
+          this.kvTable.push({Key: 'Contracts', Val: contractsAmt}) 
+          this.kvTable.push({Key: 'Quote Ccy Amt', Val: quoteCcyAmt}) 
+          this.kvTable.push({Key: 'Price', Val: (quoteCcyAmt/contractsAmt).toFixed(2)}) 
+          
           this.kvTable.push({Key: 'Constant Product', Val: resp.toString()})
           this.kvTable.push({Key: '----------Trader Positions----------', Val: ''})
           
@@ -132,8 +139,15 @@ export default {
           //alert(this.margin + 'X' + this.leverage + ' ' + this.longShort)
           const withSigner = this.contract.connect(this.provider.getSigner()) 
           const txnValue = new BigNumber(1e18).times(this.margin);
-          console.log(txnValue.toString())
           await withSigner.openPosition(this.pairAddress, this.leverage, this.longShort, {value: txnValue.toString()}).catch(e => {
+              console.log(e)
+              util.handleError(this.snack, e.message)
+          })
+      },
+      closePosition: async function(){
+          //alert(this.margin + 'X' + this.leverage + ' ' + this.longShort)
+          const withSigner = this.contract.connect(this.provider.getSigner()) 
+          await withSigner.closePosition(this.pairAddress).catch(e => {
               console.log(e)
               util.handleError(this.snack, e.message)
           })
