@@ -1,0 +1,143 @@
+<template>
+<v-container>
+    <v-row>
+      <v-col>
+        <v-card>
+          <v-expansion-panels v-model="panel" multiple>
+            <v-expansion-panel>
+              <v-expansion-panel-header
+                >Open Position For Inverse Contract
+              </v-expansion-panel-header>
+              <v-expansion-panel-content>
+                <v-row class="mx-1">
+                  <v-col>
+                    <v-text-field label="Margin" v-model="margin" type="number"></v-text-field>
+                  </v-col>
+                  <v-col>
+                    <v-text-field label="Leverage" v-model="leverage" type="number"></v-text-field>
+                  </v-col>
+                  <v-col>
+                      <v-select label="Long/Short" v-model="longShort" :items="[{text: 'Long', value: LONG}, {text: 'Short', value: SHORT}]">BUY/SELL</v-select>
+                  </v-col>
+                </v-row>
+                <v-row>
+                  <v-col>
+                    <v-btn @click="openPosition()" color="primary">Open Position</v-btn>
+                  </v-col>
+                </v-row>
+              </v-expansion-panel-content>
+            </v-expansion-panel>
+          </v-expansion-panels>
+        </v-card>
+      </v-col>
+    </v-row>
+  <v-row>
+        <v-col cols="12">
+      <v-data-table dense class="mt-4 entriesTable elevation-2"
+      :items="kvTable" :headers="kvTableHeaders" caption="Contract State"
+      :items-per-page="100"
+      :server-items-length="rowCount"
+      >
+      </v-data-table>
+        </v-col>
+    </v-row>
+    <v-row>
+        <v-col cols="12">
+            <v-btn @click="refresh()">Display Contract State</v-btn>
+        </v-col>
+    </v-row>
+    <v-snackbar v-model="snack.display" :timeout="snack.duration" :color="snack.color">
+      {{ snack.text }}
+      <v-btn text @click="snack.display = false">Close</v-btn>
+    </v-snackbar> 
+</v-container>
+</template>
+<script>
+const ethers = require('ethers');
+import BigNumber from 'bignumber.js'
+import util from '../util'
+export default {
+  name: 'InverseFutures',
+  mounted: async function(){
+    await window.ethereum.enable()
+    this.provider = new ethers.providers.Web3Provider(window.ethereum);
+    const abi = require('./InverseFuturesAbi.json')
+    this.contract = new ethers.Contract('0x975D04552b219d545d8d61952fAbFA0727a8967B', abi, this.provider);
+  },
+  data: function(){
+    return {
+        contractAddress: '0x975D04552b219d545d8d61952fAbFA0727a8967B',
+        panel: [0],
+        provider: '',
+      contract: '',
+      pairAddress: '0xb5D809A1984298A55E9A5Fd1222a01484DA08073',
+      longShort: 0,
+      LONG: 0,
+      SHORT: 1,
+      margin: '',
+      leverage: 10,
+      rowCount: 100,
+      currentAccount: '',
+      kvTable: [],
+      kvTableHeaders: [{text: 'Key', value: 'Key', sortable: false}, {text: 'Val', value: 'Val', sortable: false}],
+      snack: {
+        display: false,
+        duration: 4000,
+        color: "info",
+        text: "",
+      },
+    }
+  },
+  methods: {
+      refresh: async function(){
+          this.kvTable = [];
+          this.kvTable.push({Key: 'Contract Balance', Val: await this.provider.getBalance(this.contract.address)}) 
+          this.kvTable.push({Key: '----------vAMM Pool----------', Val: ''})
+          const resp = await this.contract.vAmmConstantProductByPair(this.pairAddress);
+          this.kvTable.push({Key: 'Pair Address', Val: this.pairAddress}) 
+          this.kvTable.push({Key: 'Token A', Val: await this.contract.tokensForPair(this.pairAddress, 0)}) 
+          this.kvTable.push({Key: 'Token B', Val: await this.contract.tokensForPair(this.pairAddress, 1)}) 
+          this.kvTable.push({Key: 'Contracts', Val: await this.contract.vAmmPoolByPair(this.pairAddress, 0)}) 
+          this.kvTable.push({Key: 'Quote Ccy Amt', Val: await this.contract.vAmmPoolByPair(this.pairAddress, 1)}) 
+          this.kvTable.push({Key: 'Constant Product', Val: resp.toString()})
+          this.kvTable.push({Key: '----------Trader Positions----------', Val: ''})
+          
+          
+          let traderNotFound = false
+          const tradersForPair = []
+          let count = 0;
+          while (!traderNotFound){
+              const trader = await this.contract.tradersForPair(this.pairAddress, count).catch(e => {
+                  traderNotFound = true
+                  console.log(e)
+              });
+              count ++;
+              if (!traderNotFound){
+                  tradersForPair.push(trader)
+                  
+              }
+          }
+          count = 1
+          for (const trader of tradersForPair){
+              this.kvTable.push({Key: 'Trader ' + count, Val: trader})
+              count ++
+              const position = await this.contract.positions(this.pairAddress, trader);
+              this.kvTable.push({Key: 'Contract Amt ', Val: position.contractAmt})
+              this.kvTable.push({Key: 'QuoteCcy Amt ', Val: position.quoteCcyAmt})
+              this.kvTable.push({Key: 'Liquidation Price ', Val: position.liquidationPrice})
+              
+          }
+      },
+      openPosition: async function(){
+          //alert(this.margin + 'X' + this.leverage + ' ' + this.longShort)
+          const withSigner = this.contract.connect(this.provider.getSigner()) 
+          const txnValue = new BigNumber(1e18).times(this.margin);
+          console.log(txnValue.toString())
+          await withSigner.openPosition(this.pairAddress, this.leverage, this.longShort, {value: txnValue.toString()}).catch(e => {
+              console.log(e)
+              util.handleError(this.snack, e.message)
+          })
+      }
+  }
+}
+</script>
