@@ -27,6 +27,9 @@
                   <v-col>
                     <v-btn @click="closePosition()" color="primary">Close Position</v-btn>
                   </v-col>
+                  <v-col>
+                    <v-btn @click="withdraw()" color="primary">Withdraw</v-btn>
+                  </v-col>
                 </v-row>
               </v-expansion-panel-content>
             </v-expansion-panel>
@@ -132,6 +135,7 @@ export default {
               this.kvTable.push({Key: 'Contract Amt ', Val: position.contractAmt})
               this.kvTable.push({Key: 'QuoteCcy Amt ', Val: position.quoteCcyAmt})
               this.kvTable.push({Key: 'Liquidation Price ', Val: position.liquidationPrice})
+              this.kvTable.push({Key: 'Margin ', Val: await this.contract.marginByPairByTrader(this.pairAddress, trader)})
               
           }
       },
@@ -148,6 +152,14 @@ export default {
           //alert(this.margin + 'X' + this.leverage + ' ' + this.longShort)
           const withSigner = this.contract.connect(this.provider.getSigner()) 
           await withSigner.closePosition(this.pairAddress).catch(e => {
+              console.log(e)
+              util.handleError(this.snack, e.message)
+          })
+      },
+      withdraw: async function(){
+          //alert(this.margin + 'X' + this.leverage + ' ' + this.longShort)
+          const withSigner = this.contract.connect(this.provider.getSigner()) 
+          await withSigner.withdrawAll(this.pairAddress).catch(e => {
               console.log(e)
               util.handleError(this.snack, e.message)
           })
