@@ -1,9 +1,51 @@
 <template>
 <v-container>
+  <v-row>
+    <v-col>
+      <v-card-title>Select Pair</v-card-title>
+      <v-select label="Pair" v-model="pairAddress" :items="pairs">AMM Pairs</v-select>
+
+    </v-col>
+  </v-row>
+  <v-row>
+      <v-col>
+        <v-card>
+          <v-expansion-panels v-model="addPairPanel" multiple>
+            <v-expansion-panel>
+              <v-expansion-panel-header
+                >Add Pair to vAMM
+              </v-expansion-panel-header>
+              <v-expansion-panel-content>
+                <v-row class="mx-1">
+                  <v-col>
+                    <v-text-field label="Token0" v-model="token0"></v-text-field>
+                  </v-col>
+                  <v-col>
+                    <v-text-field label="Token0 Pool" v-model="token0Pool"></v-text-field>
+                  </v-col>
+                  <v-col>
+                    <v-text-field label="Token1" v-model="token1"></v-text-field>
+                  </v-col>
+                  <v-col>
+                    <v-text-field label="Token1 Pool" v-model="token1Pool"></v-text-field>
+                  </v-col>
+                </v-row>
+                <v-row>
+                  <v-col>
+                    <v-btn @click="addPair()" color="primary">Add Pair</v-btn>
+                  </v-col>
+                  
+                </v-row>
+              </v-expansion-panel-content>
+            </v-expansion-panel>
+          </v-expansion-panels>
+        </v-card>
+      </v-col>
+    </v-row>
     <v-row>
       <v-col>
         <v-card>
-          <v-expansion-panels v-model="panel" multiple>
+          <v-expansion-panels v-model="positionPanel" multiple>
             <v-expansion-panel>
               <v-expansion-panel-header
                 >Open Position For Inverse Contract
@@ -68,18 +110,30 @@ export default {
     await window.ethereum.enable()
     this.provider = new ethers.providers.Web3Provider(window.ethereum);
     const abi = require('./InverseFuturesAbi.json')
-    this.contract = new ethers.Contract('0x975D04552b219d545d8d61952fAbFA0727a8967B', abi, this.provider);
+    this.contract = new ethers.Contract(this.contractAddress, abi, this.provider);
+    console.log(this.contract);
+    const pairsLength = await this.contract.getPairsLength();
+    for (let i=0; i<pairsLength; i++){
+      this.pairs.push(await this.contract.pairs(i));
+    }
   },
   data: function(){
     return {
-        contractAddress: '0x975D04552b219d545d8d61952fAbFA0727a8967B',
-        panel: [0],
+        contractAddress: '0xf92F31d17Da8D3732E2060489E8148FEc4723Ce9',
+        positionPanel: [],
+        addPairPanel: [],
         provider: '',
+        pairs: [],
+        pairAddress: '',
       contract: '',
-      pairAddress: '0xb5D809A1984298A55E9A5Fd1222a01484DA08073',
+      factoryAddress: '0x5c69bee701ef814a2b6a3edd4b1652cb9cc5aa6f',
       longShort: 0,
       LONG: 0,
       SHORT: 1,
+      token0: '',
+      token1: '',
+      token0Pool: '',
+      token1Pool: '',
       margin: '',
       leverage: 10,
       rowCount: 100,
@@ -96,6 +150,10 @@ export default {
   },
   methods: {
       refresh: async function(){
+        if (!this.pairAddress) {
+          util.handleError(this.snack, 'No Pair Selected');
+          return;
+        }
           this.kvTable = [];
           this.kvTable.push({Key: 'Contract Balance', Val: await this.provider.getBalance(this.contract.address)}) 
           this.kvTable.push({Key: '----------vAMM Pool----------', Val: ''})
@@ -139,8 +197,14 @@ export default {
               
           }
       },
+      addPair: async function(){
+          const withSigner = this.contract.connect(this.provider.getSigner()) 
+          await withSigner.addPair(this.factoryAddress, this.token0, this.token1, this.token0Pool, this.token1Pool).catch(e => {
+              console.log(e)
+              util.handleError(this.snack, e.message)
+          })
+      },
       openPosition: async function(){
-          //alert(this.margin + 'X' + this.leverage + ' ' + this.longShort)
           const withSigner = this.contract.connect(this.provider.getSigner()) 
           const txnValue = new BigNumber(1e18).times(this.margin);
           await withSigner.openPosition(this.pairAddress, this.leverage, this.longShort, {value: txnValue.toString()}).catch(e => {
