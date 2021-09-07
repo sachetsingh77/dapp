@@ -193,6 +193,7 @@ export default {
               this.kvTable.push({Key: 'Contract Amt ', Val: position.contractAmt})
               this.kvTable.push({Key: 'QuoteCcy Amt ', Val: position.quoteCcyAmt})
               this.kvTable.push({Key: 'Liquidation Price ', Val: position.liquidationPrice})
+              this.kvTable.push({Key: 'Unrealized PnL ', Val: await this.contract.getUnrealizedPnL(this.pairAddress, trader)})
               this.kvTable.push({Key: 'Margin ', Val: await this.contract.marginByPairByTrader(this.pairAddress, trader)})
               
           }
