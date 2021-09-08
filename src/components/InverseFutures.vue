@@ -79,6 +79,31 @@
         </v-card>
       </v-col>
     </v-row>
+    <v-row>
+      <v-col>
+        <v-card>
+          <v-expansion-panels v-model="liquidationPanel" multiple>
+            <v-expansion-panel>
+              <v-expansion-panel-header
+                >Liquidation
+              </v-expansion-panel-header>
+              <v-expansion-panel-content>
+                <v-row class="mx-1">
+                  <v-col>
+                      <v-select label="Trader" v-model="liquidateTrader" :items="tradersForPair">Traders</v-select>
+                  </v-col>
+                </v-row>
+                <v-row>
+                  <v-col>
+                    <v-btn @click="liquidate()" color="primary">Liquidate Trader</v-btn>
+                  </v-col>
+                </v-row>
+              </v-expansion-panel-content>
+            </v-expansion-panel>
+          </v-expansion-panels>
+        </v-card>
+      </v-col>
+    </v-row>
   <v-row>
         <v-col cols="12">
       <v-data-table dense class="mt-4 entriesTable elevation-2"
@@ -128,6 +153,8 @@ export default {
       contract: '',
       factoryAddress: '0x5c69bee701ef814a2b6a3edd4b1652cb9cc5aa6f',
       longShort: 0,
+      tradersForPair: [],
+      liquidateTrader: '',
       LONG: 0,
       SHORT: 1,
       token0: '',
@@ -172,7 +199,7 @@ export default {
           
           
           let traderNotFound = false
-          const tradersForPair = []
+          this.tradersForPair = []
           let count = 0;
           while (!traderNotFound){
               const trader = await this.contract.tradersForPair(this.pairAddress, count).catch(e => {
@@ -181,12 +208,12 @@ export default {
               });
               count ++;
               if (!traderNotFound){
-                  tradersForPair.push(trader)
+                  this.tradersForPair.push(trader)
                   
               }
           }
           count = 1
-          for (const trader of tradersForPair){
+          for (const trader of this.tradersForPair){
               this.kvTable.push({Key: 'Trader ' + count, Val: trader})
               count ++
               const position = await this.contract.positions(this.pairAddress, trader);
@@ -217,6 +244,13 @@ export default {
           //alert(this.margin + 'X' + this.leverage + ' ' + this.longShort)
           const withSigner = this.contract.connect(this.provider.getSigner()) 
           await withSigner.closePosition(this.pairAddress).catch(e => {
+              console.log(e)
+              util.handleError(this.snack, e.message)
+          })
+      },
+      liquidate: async function(){
+          const withSigner = this.contract.connect(this.provider.getSigner()) 
+          await withSigner.liquidateTrader(this.pairAddress, this.liquidateTrader).catch(e => {
               console.log(e)
               util.handleError(this.snack, e.message)
           })
