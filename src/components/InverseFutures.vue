@@ -18,6 +18,10 @@
               <v-expansion-panel-content>
                 <v-row class="mx-1">
                   <v-col>
+                    <v-text-field label="Factory" v-model="factoryAddress"></v-text-field>
+                  </v-col>
+                  
+                  <v-col>
                     <v-text-field label="Token0" v-model="token0"></v-text-field>
                   </v-col>
                   <v-col>
@@ -144,14 +148,18 @@ export default {
   },
   data: function(){
     return {
-        contractAddress: '0xf92F31d17Da8D3732E2060489E8148FEc4723Ce9',
+        contractAddress: '0x800d1021Bab494d09f5be6E2caa2D6F54Be00F3C',
+        //contractAddress: '0xe3ddCA3e55Fa42689CcBd436A70108e6702f7205',
         positionPanel: [],
         addPairPanel: [],
+        liquidationPanel: [],
         provider: '',
         pairs: [],
         pairAddress: '',
       contract: '',
-      factoryAddress: '0x5c69bee701ef814a2b6a3edd4b1652cb9cc5aa6f',
+      factoryAddress: '',
+      //factoryAddress: '0x5c69bee701ef814a2b6a3edd4b1652cb9cc5aa6f',
+      //factoryAddress: '0xc35DADB65012eC5796536bD9864eD8773aBc74C4',
       longShort: 0,
       tradersForPair: [],
       liquidateTrader: '',
@@ -182,6 +190,7 @@ export default {
           return;
         }
           this.kvTable = [];
+          this.kvTable.push({Key: 'Address', Val: this.contractAddress})
           this.kvTable.push({Key: 'Contract Balance', Val: await this.provider.getBalance(this.contract.address)}) 
           this.kvTable.push({Key: '----------vAMM Pool----------', Val: ''})
           const resp = await this.contract.vAmmConstantProductByPair(this.pairAddress);
