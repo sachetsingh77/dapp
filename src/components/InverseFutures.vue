@@ -138,8 +138,11 @@ export default {
   mounted: async function(){
     await window.ethereum.enable()
     this.provider = new ethers.providers.Web3Provider(window.ethereum);
+    const network = await this.provider.getNetwork()
+    this.chainId = network.chainId
+    console.log(this.chainId)
     const abi = require('./InverseFuturesAbi.json')
-    this.contract = new ethers.Contract(this.contractAddress, abi, this.provider);
+    this.contract = new ethers.Contract(this.contractAddresses[this.chainId], abi, this.provider);
     console.log(this.contract);
     const pairsLength = await this.contract.getPairsLength();
     for (let i=0; i<pairsLength; i++){
@@ -148,8 +151,6 @@ export default {
   },
   data: function(){
     return {
-        contractAddress: '0x800d1021Bab494d09f5be6E2caa2D6F54Be00F3C',
-        //contractAddress: '0xe3ddCA3e55Fa42689CcBd436A70108e6702f7205',
         positionPanel: [],
         addPairPanel: [],
         liquidationPanel: [],
@@ -158,8 +159,8 @@ export default {
         pairAddress: '',
       contract: '',
       factoryAddress: '',
-      //factoryAddress: '0x5c69bee701ef814a2b6a3edd4b1652cb9cc5aa6f',
-      //factoryAddress: '0xc35DADB65012eC5796536bD9864eD8773aBc74C4',
+      chainId: '',
+      contractAddresses: {'3': '0x800d1021Bab494d09f5be6E2caa2D6F54Be00F3C', '4002': '0xd526D4B0eFD6E398e21859eAc8025fC3DeD9F4EB'},
       longShort: 0,
       tradersForPair: [],
       liquidateTrader: '',
