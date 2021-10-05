@@ -1,11 +1,11 @@
 <template>
 <v-container>
   <v-row>
-    <v-col>
+    <v-col cols="6">
       <v-card-title>Select Pair</v-card-title>
       <v-select label="Pair" v-model="pairAddress" :items="pairs">AMM Pairs</v-select>
-
-    </v-col>
+      <v-btn @click="approveAllowance()" color="primary">Approve Allowance</v-btn>
+    </v-col>              
   </v-row>
   <v-row>
       <v-col>
@@ -143,7 +143,6 @@ export default {
     console.log(this.chainId)
     const abi = require('./InverseFuturesAbi.json')
     this.contract = new ethers.Contract(this.contractAddresses[this.chainId], abi, this.provider);
-    console.log(this.contract);
     const pairsLength = await this.contract.getPairsLength();
     for (let i=0; i<pairsLength; i++){
       this.pairs.push(await this.contract.pairs(i));
@@ -158,18 +157,18 @@ export default {
         pairs: [],
         pairAddress: '',
       contract: '',
-      factoryAddress: '',
+      factoryAddress: '0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6',
       chainId: '',
-      contractAddresses: {'3': '0x800d1021Bab494d09f5be6E2caa2D6F54Be00F3C', '4002': '0xd526D4B0eFD6E398e21859eAc8025fC3DeD9F4EB'},
+      contractAddresses: {'3': '0x800d1021Bab494d09f5be6E2caa2D6F54Be00F3C', '4002': '0x9e7B85AcF8A03A398Cb01C910C568998766b3d99'},
       longShort: 0,
       tradersForPair: [],
       liquidateTrader: '',
       LONG: 0,
       SHORT: 1,
-      token0: '',
-      token1: '',
-      token0Pool: '',
-      token1Pool: '',
+      token0: '0x0d657847A92eC8f0130E17406367c29E254387Ee',
+      token1: '0xf1277d1Ed8AD466beddF92ef448A132661956621',
+      token0Pool: '800',
+      token1Pool: '4',
       margin: '',
       leverage: 10,
       rowCount: 100,
@@ -191,13 +190,15 @@ export default {
           return;
         }
           this.kvTable = [];
-          this.kvTable.push({Key: 'Address', Val: this.contractAddress})
+          this.kvTable.push({Key: 'Address', Val: this.contractAddresses[this.chainId]})
           this.kvTable.push({Key: 'Contract Balance', Val: await this.provider.getBalance(this.contract.address)}) 
           this.kvTable.push({Key: '----------vAMM Pool----------', Val: ''})
           const resp = await this.contract.vAmmConstantProductByPair(this.pairAddress);
           this.kvTable.push({Key: 'Pair Address', Val: this.pairAddress}) 
-          this.kvTable.push({Key: 'Token A', Val: await this.contract.tokensForPair(this.pairAddress, 0)}) 
-          this.kvTable.push({Key: 'Token B', Val: await this.contract.tokensForPair(this.pairAddress, 1)}) 
+          this.token0 = await this.contract.tokensForPair(this.pairAddress, 0)
+          this.token1 = await this.contract.tokensForPair(this.pairAddress, 1)
+          this.kvTable.push({Key: 'Token A', Val: this.token0}) 
+          this.kvTable.push({Key: 'Token B', Val: this.token1}) 
           const contractsAmt = await this.contract.vAmmPoolByPair(this.pairAddress, 0);
           const quoteCcyAmt = await this.contract.vAmmPoolByPair(this.pairAddress, 1);
           this.kvTable.push({Key: 'Contracts', Val: contractsAmt}) 
@@ -237,15 +238,30 @@ export default {
       },
       addPair: async function(){
           const withSigner = this.contract.connect(this.provider.getSigner()) 
-          await withSigner.addPair(this.factoryAddress, this.token0, this.token1, this.token0Pool, this.token1Pool).catch(e => {
+          await withSigner.addPair(this.factoryAddress, this.token0, this.token1, new BigNumber(1e18).times(this.token0Pool).toString(), new BigNumber(1e18).times(this.token1Pool).toString()).catch(e => {
               console.log(e)
               util.handleError(this.snack, e.message)
           })
       },
+      approveAllowance: async function(){
+        if (!this.pairAddress) {
+          util.handleError(this.snack, 'No Pair Selected');
+          return;
+        }
+        this.token0 = await this.contract.tokensForPair(this.pairAddress, 0)
+        this.token1 = await this.contract.tokensForPair(this.pairAddress, 1)
+          
+        const txnValue = new BigNumber(1e18).times(2);
+        const erc20Abi = require('./ERC20Abi.json')
+        const erc20Contract = new ethers.Contract(this.token0, erc20Abi, this.provider);
+        const withErc20Signer = erc20Contract.connect(this.provider.getSigner())
+        await withErc20Signer.approve(this.contract.address, txnValue.toString());
+          
+      },
       openPosition: async function(){
           const withSigner = this.contract.connect(this.provider.getSigner()) 
           const txnValue = new BigNumber(1e18).times(this.margin);
-          await withSigner.openPosition(this.pairAddress, this.leverage, this.longShort, {value: txnValue.toString()}).catch(e => {
+          await withSigner.openPositionERC20(this.pairAddress, txnValue.toString(), this.leverage, this.longShort).catch(e => {
               console.log(e)
               util.handleError(this.snack, e.message)
           })
@@ -268,7 +284,7 @@ export default {
       withdraw: async function(){
           //alert(this.margin + 'X' + this.leverage + ' ' + this.longShort)
           const withSigner = this.contract.connect(this.provider.getSigner()) 
-          await withSigner.withdrawAll(this.pairAddress).catch(e => {
+          await withSigner.withdrawAllERC20(this.pairAddress).catch(e => {
               console.log(e)
               util.handleError(this.snack, e.message)
           })
